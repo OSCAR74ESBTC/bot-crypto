@@ -1,0 +1,8 @@
+pandas
+numpy
+matplotlib
+ta
+python-telegram-bot==20.8
+openpyxl
+schedule
+requests
