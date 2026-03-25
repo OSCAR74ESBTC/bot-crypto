@@ -2,6 +2,10 @@ import asyncio
 import requests
 import pandas as pd
 import numpy as np
+import os
+
+TOKEN = os.getenv("TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 from ta.momentum import RSIIndicator
 from datetime import datetime
 from telegram import Bot
