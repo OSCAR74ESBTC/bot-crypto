@@ -5,7 +5,8 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from detector import Enfriamiento, MercadoParado, evaluar, mejor_movimiento  # noqa: E402
+from datetime import datetime  # noqa: E402
+from detector import Enfriamiento, Latido, MercadoParado, evaluar, mejor_movimiento  # noqa: E402
 
 
 def serie(n=1500, sigma=0.0001, precio=100.0, semilla=1):
@@ -95,6 +96,26 @@ class TestMercadoParado(unittest.TestCase):
         ahora[0] += 2 * 60
         self.assertTrue(p.parado("NDX", 100))
         self.assertFalse(p.parado("NDX", 101))  # vuelve a haber ticks
+
+
+class TestLatido(unittest.TestCase):
+    def test_una_vez_al_dia_a_partir_de_la_hora(self):
+        ahora = [datetime(2026, 10, 12, 8, 59)]
+        l = Latido("09:00", ahora=lambda: ahora[0])
+        self.assertFalse(l.toca())                      # antes de la hora
+        ahora[0] = datetime(2026, 10, 12, 9, 0)
+        self.assertTrue(l.toca())                       # llega la hora
+        ahora[0] = datetime(2026, 10, 12, 18, 30)
+        self.assertFalse(l.toca())                      # ya enviado hoy
+        ahora[0] = datetime(2026, 10, 13, 8, 0)
+        self.assertFalse(l.toca())                      # día nuevo, aún no es la hora
+        ahora[0] = datetime(2026, 10, 13, 9, 5)
+        self.assertTrue(l.toca())                       # día nuevo, ya es la hora
+
+    def test_desactivado(self):
+        for valor in ("no", "off", "", None):
+            l = Latido(valor, ahora=lambda: datetime(2026, 10, 12, 12, 0))
+            self.assertFalse(l.toca())
 
 
 if __name__ == "__main__":

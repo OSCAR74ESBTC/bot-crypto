@@ -2,6 +2,7 @@
 import math
 import statistics
 import time
+from datetime import datetime
 from dataclasses import dataclass
 
 
@@ -88,3 +89,26 @@ class MercadoParado:
             self.visto[simbolo] = (tick_time, ahora)
             return False
         return ahora - previo[1] >= self.segundos
+
+
+class Latido:
+    """Aviso diario de "sigo vivo": una vez al día, a partir de la hora indicada (HH:MM)."""
+
+    def __init__(self, hora, ahora=datetime.now):
+        self.ahora = ahora
+        self.ultimo = None
+        texto = (hora or "").strip().lower()
+        if texto in ("", "no", "off"):
+            self.hm = None  # desactivado
+        else:
+            h, m = texto.split(":")
+            self.hm = (int(h), int(m))
+
+    def toca(self):
+        if self.hm is None:
+            return False
+        ahora = self.ahora()
+        if self.ultimo == ahora.date() or (ahora.hour, ahora.minute) < self.hm:
+            return False
+        self.ultimo = ahora.date()
+        return True

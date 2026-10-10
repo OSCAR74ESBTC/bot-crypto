@@ -12,6 +12,9 @@ de MetaTrader 5 de Darwinex y avisa por Telegram cuando uno sube o baja de golpe
 - No repite el mismo aviso (mismo activo y dirección) durante 15 minutos.
 - Si el mercado está cerrado (sin ticks nuevos durante 5 minutos) no avisa.
 - Si el salto viene de un cierre/apertura de mercado, el aviso lo indica con «Posible hueco de apertura».
+- Una vez al día (a las 09:00, hora del VPS) envía un aviso de **«Sigo vivo»** con los avisos y errores
+  desde el anterior y cuántos activos tienen el mercado parado. Si un día no te llega, el programa está parado.
+  Cambia la hora con `LATIDO_HORA=HH:MM` en el `.env`, o ponlo en `no` para desactivarlo.
 - Los valores de `minimo_pct` son un punto de partida: ajústalos viendo los avisos reales.
 
 ## Requisitos

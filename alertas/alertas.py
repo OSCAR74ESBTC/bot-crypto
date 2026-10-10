@@ -14,7 +14,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from detector import Enfriamiento, MercadoParado, mejor_movimiento
+from detector import Enfriamiento, Latido, MercadoParado, mejor_movimiento
 from telegram_envio import enviar
 
 AQUI = Path(__file__).resolve().parent
@@ -45,6 +45,17 @@ def formatear(nombre, m, hora_broker):
     )
     if m.hueco:
         texto += "\n⚠️ Posible hueco de apertura/cierre de mercado"
+    return texto
+
+
+def formatear_latido(total, parados, avisos, errores):
+    texto = (
+        f"✅ Sigo vivo. Vigilando {total} activos.\n"
+        f"Avisos desde el último latido: {avisos}\n"
+        f"Activos con el mercado parado ahora: {parados} de {total}"
+    )
+    if errores:
+        texto += f"\n⚠️ Errores de lectura desde el último latido: {errores}"
     return texto
 
 
@@ -86,6 +97,8 @@ def main():
     intervalo = numero("INTERVALO_SEG", 15)
     enfriamiento = Enfriamiento(numero("ENFRIAMIENTO_MIN", 15))
     parado = MercadoParado(numero("MERCADO_PARADO_MIN", 5))
+    latido = Latido(os.environ.get("LATIDO_HORA", "09:00"))
+    avisos = errores = parados_ahora = 0
 
     activos = []
     for s in simbolos:
@@ -98,10 +111,12 @@ def main():
     print(f"Vigilando {len(activos)} activos. Umbral {k}× lo normal. Ctrl+C para parar.")
 
     while True:
+        parados_ciclo = 0
         for s in activos:
             try:
                 hora_tick = fuente.hora_tick(s["mt5"])
                 if hora_tick is None or parado.parado(s["mt5"], hora_tick):
+                    parados_ciclo += 1
                     continue  # mercado cerrado o sin datos
                 velas = fuente.velas_m1(s["mt5"], historial)
                 if velas is None:
@@ -111,10 +126,19 @@ def main():
                     hora = datetime.fromtimestamp(velas[0][-1], timezone.utc).strftime("%Y-%m-%d %H:%M")
                     texto = formatear(s["nombre"], m, hora)
                     print(texto, "\n")
+                    avisos += 1
                     if not args.sin_telegram:
                         enviar(token, chat_id, texto)
             except Exception as e:  # un fallo en un activo no debe parar el resto
+                errores += 1
                 print(f"Error con {s['nombre']}: {e}")
+        parados_ahora = parados_ciclo
+        if latido.toca():
+            texto = formatear_latido(len(activos), parados_ahora, avisos, errores)
+            print(texto, "\n")
+            if not args.sin_telegram:
+                enviar(token, chat_id, texto)
+            avisos = errores = 0
         time.sleep(intervalo)
 
 
