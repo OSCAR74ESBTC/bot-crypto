@@ -1,0 +1,2 @@
+requests
+MetaTrader5  # solo existe para Windows
