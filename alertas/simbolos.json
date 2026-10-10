@@ -1,0 +1,14 @@
+{
+  "_nota": "minimo_pct = suelo de movimiento en 5 min (en %). Son valores iniciales a ajustar. Comprueba el nombre exacto de cada simbolo en tu MT5 (python alertas.py --listar-simbolos).",
+  "simbolos": [
+    {"nombre": "USDJPY", "mt5": "USDJPY", "minimo_pct": 0.15},
+    {"nombre": "GBPJPY", "mt5": "GBPJPY", "minimo_pct": 0.20},
+    {"nombre": "XAUUSD", "mt5": "XAUUSD", "minimo_pct": 0.40},
+    {"nombre": "XAGUSD", "mt5": "XAGUSD", "minimo_pct": 0.80},
+    {"nombre": "CADCHF", "mt5": "CADCHF", "minimo_pct": 0.12},
+    {"nombre": "WS30", "mt5": "WS30", "minimo_pct": 0.30},
+    {"nombre": "SP500", "mt5": "SP500", "minimo_pct": 0.30},
+    {"nombre": "NDX", "mt5": "NDX", "minimo_pct": 0.40},
+    {"nombre": "XTIUSD", "mt5": "XTIUSD", "minimo_pct": 0.60}
+  ]
+}
