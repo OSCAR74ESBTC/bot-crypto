@@ -24,7 +24,7 @@ def cargar_env(ruta):
     """Lee un archivo .env sencillo (CLAVE=valor) sin pisar variables ya definidas."""
     if not ruta.exists():
         return
-    for linea in ruta.read_text(encoding="utf-8").splitlines():
+    for linea in ruta.read_text(encoding="utf-8-sig").splitlines():
         linea = linea.strip()
         if linea and not linea.startswith("#") and "=" in linea:
             clave, valor = linea.split("=", 1)
@@ -79,7 +79,7 @@ def main():
     if not args.sin_telegram and (not token or not chat_id):
         sys.exit("Faltan TELEGRAM_TOKEN y TELEGRAM_CHAT_ID (ver .env.example), o usa --sin-telegram.")
 
-    simbolos = json.loads((AQUI / "simbolos.json").read_text(encoding="utf-8"))["simbolos"]
+    simbolos = json.loads((AQUI / "simbolos.json").read_text(encoding="utf-8-sig"))["simbolos"]
     k = numero("UMBRAL_K", 5)
     horizontes = [int(h) for h in os.environ.get("HORIZONTES_MIN", "1,5").split(",")]
     historial = int(numero("HISTORIAL_VELAS", 2880))
