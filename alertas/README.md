@@ -17,6 +17,23 @@ de MetaTrader 5 de Darwinex y avisa por Telegram cuando uno sube o baja de golpe
   Cambia la hora con `LATIDO_HORA=HH:MM` en el `.env`, o ponlo en `no` para desactivarlo.
 - Los valores de `minimo_pct` son un punto de partida: ajústalos viendo los avisos reales.
 
+## Cinta de tendencia (USDJPY, velas de 1 hora)
+
+Segundo tipo de aviso, independiente de los saltos bruscos. Es una cinta **propia** (no es el indicador T Line Pro ni
+ningún otro comercial, y no da las mismas señales): el espacio entre dos medias móviles exponenciales de las velas H1.
+Con una zona neutral proporcional al ATR para filtrar ruido.
+
+- Avisa **solo cuando la dirección se invierte** (alcista a bajista o al revés) tras cruzar la zona neutral, y siempre
+  con la **vela ya cerrada**, por lo que una señal enviada no se borra después.
+- No avisa al entrar en la zona neutral, ni al volver al mismo lado tras un retroceso.
+- Llega con retraso respecto al giro real: es un indicador de confirmación, no de predicción.
+- Al arrancar o reiniciar el programa solo anota la última vela y no repite el último giro.
+- Se activa por activo con `"cinta_h1": true` en `simbolos.json` (ahora solo USDJPY).
+- Los parámetros (9, 21 y 0,3) son valores iniciales, no resultados de ninguna optimización. Se cambian en el `.env`
+  (`CINTA_RAPIDA`, `CINTA_LENTA`, `CINTA_NEUTRAL_ATR`).
+- **Antes de fiarte de ella, mira el histórico:** `python alertas.py --probar-cinta` imprime los giros que habría
+  dado en las últimas 2000 velas H1 de tu MT5, con fecha y precio. No mide si habrían sido rentables.
+
 ## Requisitos
 
 - **Windows** con el terminal **MetaTrader 5 de Darwinex abierto y con la sesión iniciada**.
@@ -44,5 +61,5 @@ MT5 también debe arrancar solo y con la sesión guardada.
 
 ## Pruebas
 
-`python -m unittest discover -s tests -v` comprueba el detector con series sintéticas (no necesita MT5).
+`python -m unittest discover -s tests -v` comprueba el detector y la cinta con series sintéticas (no necesita MT5).
 La conexión real con MT5 solo puede probarse en Windows con el terminal abierto.
