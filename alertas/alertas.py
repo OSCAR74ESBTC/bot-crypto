@@ -14,6 +14,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from cinta import SeguidorCinta, giros
 from detector import Enfriamiento, Latido, MercadoParado, mejor_movimiento
 from telegram_envio import enviar
 
@@ -48,6 +49,16 @@ def formatear(nombre, m, hora_broker):
     return texto
 
 
+def formatear_cinta(nombre, g):
+    hora = datetime.fromtimestamp(g.tiempo, timezone.utc).strftime("%Y-%m-%d %H:%M")
+    sentido = "ALCISTA 📈" if g.direccion > 0 else "BAJISTA 📉"
+    return (
+        f"{nombre} (H1): la cinta de tendencia gira a {sentido}\n"
+        f"Vela H1 que abrió a las {hora} (hora del bróker), ya cerrada\n"
+        f"Cierre: {g.cierre:.5g} · cinta rápida {g.rapida:.5g} / lenta {g.lenta:.5g}"
+    )
+
+
 def formatear_latido(total, parados, avisos, errores):
     texto = (
         f"✅ Sigo vivo. Vigilando {total} activos.\n"
@@ -65,6 +76,7 @@ def main():
     ap.add_argument("--prueba-telegram", action="store_true")
     ap.add_argument("--listar-simbolos", action="store_true")
     ap.add_argument("--sin-telegram", action="store_true")
+    ap.add_argument("--probar-cinta", action="store_true", help="muestra los giros de la cinta en el histórico")
     args = ap.parse_args()
 
     cargar_env(AQUI / ".env")
@@ -87,7 +99,7 @@ def main():
         fuente.cerrar()
         return
 
-    if not args.sin_telegram and (not token or not chat_id):
+    if not (args.sin_telegram or args.probar_cinta) and (not token or not chat_id):
         sys.exit("Faltan TELEGRAM_TOKEN y TELEGRAM_CHAT_ID (ver .env.example), o usa --sin-telegram.")
 
     simbolos = json.loads((AQUI / "simbolos.json").read_text(encoding="utf-8-sig"))["simbolos"]
@@ -99,6 +111,12 @@ def main():
     parado = MercadoParado(numero("MERCADO_PARADO_MIN", 5))
     latido = Latido(os.environ.get("LATIDO_HORA", "09:00"))
     avisos = errores = parados_ahora = 0
+    parametros_cinta = dict(
+        rapida=int(numero("CINTA_RAPIDA", 9)),
+        lenta=int(numero("CINTA_LENTA", 21)),
+        umbral_atr=numero("CINTA_NEUTRAL_ATR", 0.3),
+    )
+    cinta = SeguidorCinta(**parametros_cinta)
 
     activos = []
     for s in simbolos:
@@ -108,6 +126,23 @@ def main():
             print(f"AVISO: el símbolo {s['mt5']} ({s['nombre']}) no existe en tu MT5; lo ignoro.")
     if not activos:
         sys.exit("Ningún símbolo válido.")
+    if args.probar_cinta:
+        con_cinta = [s for s in activos if s.get("cinta_h1")]
+        for s in con_cinta:
+            h1 = fuente.velas_h1(s["mt5"], 2000)
+            if not h1:
+                print(f"{s['nombre']}: sin datos H1")
+                continue
+            lista = giros(*h1, **parametros_cinta)
+            dias = (h1[0][-1] - h1[0][0]) / 86400
+            print(f"{s['nombre']}: {len(lista)} giros en {len(h1[0])} velas H1 (≈{dias:.0f} días). Parámetros: {parametros_cinta}")
+            for g in lista:
+                hora = datetime.fromtimestamp(g.tiempo, timezone.utc).strftime("%Y-%m-%d %H:%M")
+                print(f"  {hora}  {'ALCISTA' if g.direccion > 0 else 'BAJISTA'}  cierre {g.cierre:.5g}")
+        if not con_cinta:
+            print('Ningún activo tiene "cinta_h1": true en simbolos.json.')
+        fuente.cerrar()
+        return
     print(f"Vigilando {len(activos)} activos. Umbral {k}× lo normal. Ctrl+C para parar.")
 
     while True:
@@ -118,6 +153,14 @@ def main():
                 if hora_tick is None or parado.parado(s["mt5"], hora_tick):
                     parados_ciclo += 1
                     continue  # mercado cerrado o sin datos
+                if s.get("cinta_h1"):
+                    h1 = fuente.velas_h1(s["mt5"], 300)
+                    for g in (cinta.procesar(s["nombre"], *h1) if h1 else []):
+                        texto = formatear_cinta(s["nombre"], g)
+                        print(texto, "\n")
+                        avisos += 1
+                        if not args.sin_telegram:
+                            enviar(token, chat_id, texto)
                 velas = fuente.velas_m1(s["mt5"], historial)
                 if velas is None:
                     continue

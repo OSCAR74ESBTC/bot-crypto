@@ -29,6 +29,18 @@ class FuenteMT5:
         # La hora de las velas es la del servidor del bróker, no UTC.
         return [int(t) for t in datos["time"]], [float(c) for c in datos["close"]]
 
+    def velas_h1(self, simbolo, n):
+        """Velas de 1 hora ya cerradas (posición 1 salta la vela en formación): tiempos, altos, bajos, cierres."""
+        datos = self.mt5.copy_rates_from_pos(simbolo, self.mt5.TIMEFRAME_H1, 1, n)
+        if datos is None or len(datos) == 0:
+            return None
+        return (
+            [int(t) for t in datos["time"]],
+            [float(x) for x in datos["high"]],
+            [float(x) for x in datos["low"]],
+            [float(x) for x in datos["close"]],
+        )
+
     def hora_tick(self, simbolo):
         tick = self.mt5.symbol_info_tick(simbolo)
         return tick.time if tick else None
