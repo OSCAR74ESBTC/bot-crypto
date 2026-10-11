@@ -6,6 +6,7 @@ class FuenteMT5:
     def __init__(self):
         import MetaTrader5 as mt5  # aquí dentro para poder probar el detector sin MT5
         self.mt5 = mt5
+        self.ultimo_error = None
 
     def conectar(self, reintentos=5, espera=10):
         for _ in range(reintentos):
@@ -30,16 +31,24 @@ class FuenteMT5:
         return [int(t) for t in datos["time"]], [float(c) for c in datos["close"]]
 
     def velas_h1(self, simbolo, n):
-        """Velas de 1 hora ya cerradas (posición 1 salta la vela en formación): tiempos, altos, bajos, cierres."""
-        datos = self.mt5.copy_rates_from_pos(simbolo, self.mt5.TIMEFRAME_H1, 1, n)
-        if datos is None or len(datos) == 0:
-            return None
-        return (
-            [int(t) for t in datos["time"]],
-            [float(x) for x in datos["high"]],
-            [float(x) for x in datos["low"]],
-            [float(x) for x in datos["close"]],
-        )
+        """Velas de 1 hora ya cerradas (posición 1 salta la vela en formación): tiempos, altos, bajos, cierres.
+
+        MT5 devuelve vacío si piden más velas de las que el terminal tiene descargadas o si aún está
+        sincronizando el histórico. Por eso se reintenta una vez y, si sigue vacío, con menos velas.
+        """
+        for cantidad in dict.fromkeys(c for c in (n, 1000, 500, 300, 150, 100) if c <= n):
+            for _ in range(2):
+                datos = self.mt5.copy_rates_from_pos(simbolo, self.mt5.TIMEFRAME_H1, 1, cantidad)
+                if datos is not None and len(datos) > 0:
+                    return (
+                        [int(t) for t in datos["time"]],
+                        [float(x) for x in datos["high"]],
+                        [float(x) for x in datos["low"]],
+                        [float(x) for x in datos["close"]],
+                    )
+                time.sleep(1)
+        self.ultimo_error = self.mt5.last_error()
+        return None
 
     def hora_tick(self, simbolo):
         tick = self.mt5.symbol_info_tick(simbolo)

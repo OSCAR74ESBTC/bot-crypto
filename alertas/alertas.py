@@ -117,6 +117,7 @@ def main():
         umbral_atr=numero("CINTA_NEUTRAL_ATR", 0.3),
     )
     cinta = SeguidorCinta(**parametros_cinta)
+    sin_h1 = set()
 
     activos = []
     for s in simbolos:
@@ -131,8 +132,11 @@ def main():
         for s in con_cinta:
             h1 = fuente.velas_h1(s["mt5"], 2000)
             if not h1:
-                print(f"{s['nombre']}: sin datos H1")
+                print(f"{s['nombre']}: sin datos H1 (error de MT5: {fuente.ultimo_error}). "
+                      "Abre un gráfico H1 de este activo en MT5 y desplázate atrás para que descargue el histórico.")
                 continue
+            if len(h1[0]) < 2000:
+                print(f"{s['nombre']}: MT5 solo tiene {len(h1[0])} velas H1 disponibles de las 2000 pedidas.")
             lista = giros(*h1, **parametros_cinta)
             dias = (h1[0][-1] - h1[0][0]) / 86400
             print(f"{s['nombre']}: {len(lista)} giros en {len(h1[0])} velas H1 (≈{dias:.0f} días). Parámetros: {parametros_cinta}")
@@ -155,6 +159,9 @@ def main():
                     continue  # mercado cerrado o sin datos
                 if s.get("cinta_h1"):
                     h1 = fuente.velas_h1(s["mt5"], 300)
+                    if not h1 and s["nombre"] not in sin_h1:
+                        sin_h1.add(s["nombre"])  # avisar una sola vez, no cada 15 s
+                        print(f"AVISO: {s['nombre']} sin velas H1 en MT5 (error: {fuente.ultimo_error}); la cinta no funciona hasta que haya datos.")
                     for g in (cinta.procesar(s["nombre"], *h1) if h1 else []):
                         texto = formatear_cinta(s["nombre"], g)
                         print(texto, "\n")
